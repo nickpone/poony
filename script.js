@@ -1,67 +1,155 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const cors = require('cors');
-const app = express();
-const port = 3000;
-
-// Multer setup
-const upload = multer({ dest: 'uploads/' });
-
-// Middleware
-app.use(express.static('public'));
-app.use(express.json());
-app.use(cors());
-
-let videos = [];
-
-// Upload video
-app.post('/upload', upload.single('video'), (req, res) => {
-    const { originalname, filename } = req.file;
-    const title = req.body.title;
-    const newFilename = `${Date.now()}_${originalname}`;
-    const oldPath = path.join(__dirname, 'uploads', filename);
-    const newPath = path.join(__dirname, 'uploads', newFilename);
-
-    fs.renameSync(oldPath, newPath);
-
-    const videoData = {
-        id: Date.now(),
-        title,
-        url: `/uploads/${newFilename}`,
-        comments: [],
-        likes: 0,
-        dislikes: 0
-    };
-
-    videos.push(videoData);
-    res.json(videoData);
+document.addEventListener("DOMContentLoaded", () => {
+    loadVideos();
 });
 
-// Get videos
-app.get('/videos', (req, res) => {
-    res.json(videos);
-});
+function openUploadModal() {
+    document.getElementById("uploadModal").style.display = "flex";
+}
 
-// Update likes or dislikes
-app.post('/update/:type', (req, res) => {
-    const { videoId } = req.body;
-    const video = videos.find(v => v.id == videoId);
+function closeUploadModal() {
+    document.getElementById("uploadModal").style.display = "none";
+}
 
-    if (video) {
-        if (req.params.type === 'like') {
-            video.likes++;
-        } else if (req.params.type === 'dislike') {
-            video.dislikes++;
+async function uploadVideo() {
+    const videoFile = document.getElementById("videoFile").files[0];
+    const videoTitle = document.getElementById("videoTitle").value;
+
+    if (videoFile && videoTitle) {
+        const formData = new FormData();
+        formData.append('video', videoFile);
+        formData.append('title', videoTitle);
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const videoData = await response.json();
+                closeUploadModal();
+                loadVideos(); // Reload videos to display the new upload
+            } else {
+                console.error('Upload failed:', response.statusText);
+                alert('Failed to upload video');
+            }
+        } catch (error) {
+            console.error('Error uploading video:', error);
         }
-        res.json({ likes: video.likes, dislikes: video.dislikes });
     } else {
-        res.status(404).send('Video not found');
+        alert('Please select a video file and enter a title');
     }
-});
+}
 
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
+async function loadVideos() {
+    try {
+        const response = await fetch('/videos');
+        const videos = await response.json();
+        const videoGrid = document.getElementById("videoGrid");
+        videoGrid.innerHTML = '';
+
+        videos.forEach(video => {
+            const videoElement = document.createElement("video");
+            videoElement.src = video.url;
+            videoElement.controls = true;
+            videoElement.width = 320;
+
+            const videoCard = document.createElement("div");
+            videoCard.className = "video-card";
+
+            const videoTitleElement = document.createElement("h3");
+            videoTitleElement.textContent = video.title;
+
+            const likeButton = document.createElement("button");
+            likeButton.textContent = `Like (${video.likes || 0})`;
+            likeButton.onclick = () => updateLikesDislikes(video, 'like');
+
+            const dislikeButton = document.createElement("button");
+            dislikeButton.textContent = `Dislike (${video.dislikes || 0})`;
+            dislikeButton.onclick = () => updateLikesDislikes(video, 'dislike');
+
+            const likeDislikeContainer = document.createElement("div");
+            likeDislikeContainer.className = "likes-dislikes";
+            likeDislikeContainer.appendChild(likeButton);
+            likeDislikeContainer.appendChild(dislikeButton);
+
+            const commentSection = document.createElement("div");
+            commentSection.className = "comment-section";
+
+            const commentTitle = document.createElement("h4");
+            commentTitle.textContent = "Comments";
+
+            const commentInput = document.createElement("div");
+            commentInput.className = "comment-input";
+
+            const commentTextInput = document.createElement("input");
+            commentTextInput.type = "text";
+            commentTextInput.placeholder = "Add a comment...";
+
+            const commentButton = document.createElement("button");
+            commentButton.textContent = "Post";
+            commentButton.onclick = () => postComment(video, commentTextInput.value);
+
+            commentInput.appendChild(commentTextInput);
+            commentInput.appendChild(commentButton);
+
+            const commentList = document.createElement("div");
+            commentList.className = "comment-list";
+            video.comments.forEach(comment => {
+                const commentElement = document.createElement("div");
+                commentElement.className = "comment";
+                commentElement.innerHTML = `<p>${comment}</p>`;
+                commentList.appendChild(commentElement);
+            });
+
+            commentSection.appendChild(commentTitle);
+            commentSection.appendChild(commentInput);
+            commentSection.appendChild(commentList);
+
+            videoCard.appendChild(videoElement);
+            videoCard.appendChild(videoTitleElement);
+            videoCard.appendChild(likeDislikeContainer);
+            videoCard.appendChild(commentSection);
+
+            videoGrid.appendChild(videoCard);
+        });
+    } catch (error) {
+        console.error('Error loading videos:', error);
+    }
+}
+
+async function updateLikesDislikes(video, type) {
+    try {
+        const response = await fetch(`/update/${type}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId: video.id })
+        });
+
+        if (response.ok) {
+            const { likes, dislikes } = await response.json();
+            loadVideos(); // Reload videos to update the like/dislike counts
+        } else {
+            console.error('Failed to update like/dislike:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error updating like/dislike:', error);
+    }
+}
+
+async function postComment(video, commentText) {
+    if (commentText.trim()) {
+        video.comments.push(commentText);
+        await loadVideos(); // Reload videos to display the new comment
+    }
+}
+
+function searchVideos() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const videoCards = document.querySelectorAll('.video-card');
+    videoCards.forEach(card => {
+        const title = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = title.includes(query) ? 'block' : 'none';
+    });
+}
 
