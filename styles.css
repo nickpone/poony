@@ -43,7 +43,7 @@ header input[type="text"] {
     width: 300px;
 }
 
-.main {
+main {
     display: flex;
     justify-content: center;
     margin: 20px;
@@ -201,3 +201,4 @@ header input[type="text"] {
     text-decoration: none;
     cursor: pointer;
 }
+
