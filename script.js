@@ -2,17 +2,21 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 const app = express();
 const port = 3000;
 
+// Multer setup
 const upload = multer({ dest: 'uploads/' });
 
-let videos = []; // Store videos in memory for simplicity
-
+// Middleware
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cors());
 
-// Handle video upload
+let videos = [];
+
+// Upload video
 app.post('/upload', upload.single('video'), (req, res) => {
     const { originalname, filename } = req.file;
     const title = req.body.title;
@@ -35,12 +39,12 @@ app.post('/upload', upload.single('video'), (req, res) => {
     res.json(videoData);
 });
 
-// Serve all videos
+// Get videos
 app.get('/videos', (req, res) => {
     res.json(videos);
 });
 
-// Update likes and dislikes
+// Update likes or dislikes
 app.post('/update/:type', (req, res) => {
     const { videoId } = req.body;
     const video = videos.find(v => v.id == videoId);
@@ -60,3 +64,4 @@ app.post('/update/:type', (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
+
