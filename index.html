@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poon - Video Sharing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Poon</div>
+        <button onclick="location.href='index.html'">Home</button>
+        <input type="text" id="searchInput" placeholder="Search..." oninput="searchVideos()">
+        <button onclick="openUploadModal()">Upload</button>
+    </header>
+
+    <main>
+        <div id="videoGrid" class="video-grid"></div>
+    </main>
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUploadModal()">&times;</span>
+            <h2>Upload Video</h2>
+            <input type="file" id="videoFile" accept="video/*"><br>
+            <input type="text" id="videoTitle" placeholder="Video Title"><br>
+            <button onclick="uploadVideo()">Upload</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
